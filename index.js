@@ -9,7 +9,11 @@ const port = process.env.PORT || 5000;
 
 //middleware
 app.use(cors({
-  origin: ['http://localhost:5173'], // replace with your client domain
+  origin: [
+    // 'http://localhost:5173'
+    'https://cars-doctor-e99e1.web.app',
+    'https://cars-doctor-e99e1.firebaseapp.com'
+  ], // replace with your client domain
   credentials: true, // required for cookies
 }));
 app.use(express.json());
@@ -67,8 +71,8 @@ async function run() {
     const cookieConfig = {
       httpOnly: true, // to disable accessing cookie via client side js
       // secure: true, // to force https (if you use it)
-      secure: false,
-      // sameSite: 'none',
+      secure: true,
+      sameSite: 'none',
       // maxAge: 1000000, // ttl in seconds (remove this option and cookie will die when browser is closed)
       // signed: true // if you use the secret with cookieParser
       // {httpOnly: true, secure: false}
@@ -82,6 +86,13 @@ async function run() {
       .cookie('token', token, cookieConfig)
       .send({success: true})
       // res.send(token);
+    })
+
+    app.post('/logout', async (req, res) => {
+      const user = req.body;
+      console.log('loggin out', user);
+      res.clearCookie('token', {maxAge: 0});
+      res.send({success: true})
     })
 
     //services related api
