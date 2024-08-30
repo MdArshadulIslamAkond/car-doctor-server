@@ -10,7 +10,7 @@ const port = process.env.PORT || 5000;
 //middleware
 app.use(cors({
   origin: [
-    // 'http://localhost:5173'
+    'http://localhost:5173',
     'https://cars-doctor-e99e1.web.app',
     'https://cars-doctor-e99e1.firebaseapp.com'
   ], // replace with your client domain
@@ -58,25 +58,26 @@ if (err){
 
 
 }
+
+//cookies configuration
+const cookieConfig = {
+  httpOnly: true, // to disable accessing cookie via client side js
+  secure: process.env.NODE_ENV === "production" ? true : false, // to force https (if you use it)
+  sameSite: process.env.NODE_ENV === "production" ? "none" : "strict", // none, strict mode
+  // maxAge: 1000000, // ttl in seconds (remove this option and cookie will die when browser is closed)
+  // signed: true // if you use the secret with cookieParser
+  // {httpOnly: true, secure: false}
+};
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const database = client.db("carsDoctor");
     const carServices = database.collection("services");
     const bookingCollections = database.collection("bookings");
 
     // auth related api
-    const cookieConfig = {
-      httpOnly: true, // to disable accessing cookie via client side js
-      // secure: true, // to force https (if you use it)
-      secure: true,
-      sameSite: 'none',
-      // maxAge: 1000000, // ttl in seconds (remove this option and cookie will die when browser is closed)
-      // signed: true // if you use the secret with cookieParser
-      // {httpOnly: true, secure: false}
-  };
   
     app.post('/jwt', logger, async(req, res)=>{
       const user = req.body;
@@ -91,7 +92,7 @@ async function run() {
     app.post('/logout', async (req, res) => {
       const user = req.body;
       console.log('loggin out', user);
-      res.clearCookie('token', {maxAge: 0});
+      res.clearCookie('token', {...cookieConfig, maxAge: 0});
       res.send({success: true})
     })
 
@@ -173,8 +174,8 @@ async function run() {
     });
 
     // Send a ping to confirm a successful connection
-    await client.connect();
-    await client.db("admin").command({ ping: 1 });
+ 
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
