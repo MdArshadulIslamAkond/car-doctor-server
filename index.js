@@ -23,7 +23,7 @@ app.use(cookieParser());
 // console.log(process.env.DB_PASS)
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.jp5aibk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
-// const uri = "mongodb+srv://<db_username>:<db_password>@cluster0.jp5aibk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+// const uri = "mongodb+srv://carsDoctorUser:sUKtUnIbXFjmtbFn@cluster0.jp5aibk.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
@@ -35,7 +35,7 @@ const client = new MongoClient(uri, {
 
 //middlewares
 const logger = async(req, res, next)=>{
-  console.log(`colled:${req.host} ${req.originalUrl}`);
+  // console.log(`colled:${req.host} ${req.originalUrl}`);
   next();
 }
 
@@ -47,11 +47,11 @@ if(!token){
 jwt.verify(token,process.env.ACCESS_TOKEN_SECRET, (err, decoded)=>{
   //error
 if (err){
-  console.log(err);
+  // console.log(err);
   return res.status(403).send({message: 'forbidden'});
 }
   //if token is valid then it would be decoded
-  console.log('value in the token', decoded);
+  // console.log('value in the token', decoded);
   req.user = decoded;
   next();
 })
@@ -71,7 +71,7 @@ const cookieConfig = {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    // await client.connect();
+    await client.connect();
 
     const database = client.db("carsDoctor");
     const carServices = database.collection("services");
@@ -81,7 +81,7 @@ async function run() {
   
     app.post('/jwt', logger, async(req, res)=>{
       const user = req.body;
-      console.log(user);
+      // console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'})
       res
       .cookie('token', token, cookieConfig)
@@ -91,18 +91,40 @@ async function run() {
 
     app.post('/logout', async (req, res) => {
       const user = req.body;
-      console.log('loggin out', user);
+      // console.log('loggin out', user);
       res.clearCookie('token', {...cookieConfig, maxAge: 0});
       res.send({success: true})
     })
 
     //services related api
     app.get('/services', async (req, res) => {
-        const service = await carServices.find().toArray();
-        res.send(service);
+      const filter = req.query;
+      const search = req.query.search;
+      // console.log(filter);
+      const pipeline = [
+      
+        {
+            $addFields: {
+                priceNumeric: { $toDouble: "$price" } // Convert string to double
+            }
+        },
+        {
+          $match: {
+            priceNumeric: { $lt: 300},
+            title: {$regex: search, $options: 'i'},
+          }
+        },
+        {
+            $sort: {
+                priceNumeric: filter.sort === 'asc' ? 1: -1 // Sort by the numeric price
+            }
+        }];
+        const services = await carServices.aggregate(pipeline).toArray();
+        res.send(services);
     })
 
     app.get('/services/:id', async(req, res)=>{
+      console.log(req.params);
         const id = req.params.id;
         const query = {_id: new ObjectId(id)};
         const options = {
@@ -123,9 +145,9 @@ async function run() {
 
     // bookings
     app.get('/bookings', logger, verifyToken, async (req, res) => {
-        console.log(req.query.email);
-        console.log('tok tok token', req.cookies.token);
-        console.log('user in the valid token :', req.user);
+        // console.log(req.query.email);
+        // console.log('tok tok token', req.cookies.token);
+        // console.log('user in the valid token :', req.user);
         if(req.query.email!== req.user.email) {
           return res.status(403).send({message: 'forbidden'});
         }
